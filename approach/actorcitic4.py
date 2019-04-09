@@ -59,7 +59,7 @@ class Actor(nn.Module):
             log_std3= torch.clamp(log_std3, min=LOG_SIG_MIN, max=LOG_SIG_MAX)   
             list1 = torch.cat([m0, m1, m2, m3]).type(torch.cuda.FloatTensor)
             list2 = torch.cat([log_std, log_std1, log_std2, log_std3]).type(torch.cuda.FloatTensor)
-            return list1, list2
+            return list1, list2.exp()
         if approach == True and retract== False:
             Az = self.approachz(x)
             log_stdz= self.log_std_approachz(x)
@@ -72,7 +72,7 @@ class Actor(nn.Module):
             log_stdx= torch.clamp(log_stdx, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
             list1 = torch.cat([Az, Ay, Ax]).type(torch.cuda.FloatTensor)            
             list2 = torch.cat([log_stdz, log_stdy, log_stdx]).type(torch.cuda.FloatTensor)
-            return list1, list2
+            return list1, list2.exp()
         if approach == False and retract== True:
             Rz = self.retractz(x)
             log_stdRz= self.log_std_retractz(x)
@@ -85,7 +85,7 @@ class Actor(nn.Module):
             log_stdRx= torch.clamp(log_stdRx, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
             list1 = torch.cat([Rz, Ry, Rx]).type(torch.cuda.FloatTensor)
             list2 = torch.cat([log_stdRz, log_stdRy, log_stdRx]).type(torch.cuda.FloatTensor)
-            return list1, list2
+            return list1, list2.exp()
 
 def act(state_inp, model, approach, retract):
     FloatTensor = torch.cuda.FloatTensor
@@ -97,5 +97,4 @@ def act(state_inp, model, approach, retract):
         normal = Normal(list1[i], list2[i])
         X = normal.rsample()
         act[i] = torch.tanh(X)
-    list3 = list1.abs()
-    return act, list3/list2
+    return act, list2

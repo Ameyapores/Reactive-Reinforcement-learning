@@ -169,11 +169,14 @@ def test(rank, args, shared_model, counter):
             timeStep = 0
             state_inp = torch.from_numpy(env2.observation(lastObs)).type(FloatTensor)
             model.load_state_dict(shared_model.state_dict())
-            Ratio=[]
+            Ratio, first_step =[], []
             while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
                 action = [0, 0, 0, 0, 0, 0]
 
                 act_tensor, ratio = act(state_inp, model, True, False)       
+                if timeStep ==1:
+                    first_step.append(ratio.cpu().detach().numpy()[0])
+                
                 Ratio.append(ratio.cpu().detach().numpy())
                 for i in range(len(object_oriented_goal)):
                     action[i] = act_tensor[i].cpu().detach().numpy()
@@ -238,7 +241,7 @@ def test(rank, args, shared_model, counter):
                 #lastObs = env.reset()
                 if ep_num % 100==0:            
                     print("num episodes {}, success {}".format(num_ep, success))
-                    data = [counter.value, success, plot_ratio]
+                    data = [counter.value, success, first_step, plot_ratio[0], plot_ratio[1], plot_ratio[2]]
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
