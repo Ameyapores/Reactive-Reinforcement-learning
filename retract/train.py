@@ -94,7 +94,7 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
                 action[i] = object_rel_pos[i]*6
 
             action[3] = -0.01
-            action[5] = obsDataNew['quat'][0]/5
+            action[5] = obsDataNew['quat'][0]/6
             obsDataNew, reward, done, info = env.step(action)
             timeStep += 1
 
@@ -170,7 +170,7 @@ def test(rank, args, shared_model, counter):
             object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object    
             timeStep = 0
             model.load_state_dict(shared_model.state_dict())
-            Ratio=[]
+            Ratio, first_step =[], [] 
             while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
                 #env.render()
                 action = [0, 0, 0, 0, 0, 0]
@@ -193,7 +193,7 @@ def test(rank, args, shared_model, counter):
                 action = [0, 0, 0, 0, 0, 0]
                 for i in range(len(object_rel_pos)):
                     action[i] = object_rel_pos[i]*6
-                action[5] = obsDataNew['quat'][0]/5
+                action[5] = obsDataNew['quat'][0]/6
                 action[3] = -0.01
 
                 obsDataNew, reward, done, info = env.step(action)
@@ -239,7 +239,7 @@ def test(rank, args, shared_model, counter):
                 #lastObs = env.reset()
                 if ep_num % 100==0:            
                     print("num episodes {}, success {}".format(num_ep, success))
-                    data = [counter.value, success, plot_ratio]
+                    data = [counter.value, success, first_step, plot_ratio[0], plot_ratio[1], plot_ratio[2]]
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
