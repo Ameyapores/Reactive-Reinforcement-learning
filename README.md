@@ -9,7 +9,7 @@ For installing OpenAI fetch simulator: Refer to [Fetch](https://openai.com/blog/
 
 ### Step 1: Train on approach
 ## Results
-
+<img src="images/fetch_rotate.gif"> 
 
 Comparison of end-to-end learning vs proposed reactive Reinforcement architecture.
 
