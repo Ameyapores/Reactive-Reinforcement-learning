@@ -34,7 +34,7 @@ parser.add_argument('--max-eps', type=float, default=10000,
                     help='max number of episodes (default: 10000)')
 parser.add_argument('--max-steps', type=float, default=50,
                     help='max number of steps per episode (default: 50)')
-parser.add_argument('--num-processes', type=int, default=2,
+parser.add_argument('--num-processes', type=int, default=4,
                     help='how many training processes to use (default: 4)')
 parser.add_argument('--save-interval', type=int, default=50,
                     help='model save interval (default: 10)')

@@ -44,7 +44,6 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict2}
         model_dict2.update(pretrained_dict) 
         model2.load_state_dict(model_dict2)
-
     
     for p in model.fc1.parameters():
         p.requires_grad = False
@@ -114,11 +113,14 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
             objectPos = obsDataNew['observation'][3:6]
             object_rel_pos = obsDataNew['observation'][6:9]
             state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
-            if timeStep >= env._max_episode_steps:   
+            if timeStep >= env._max_episode_steps: 
+                reward = torch.Tensor([-1.0]).type(FloatTensor)
                 break
-        reward = torch.Tensor([-1.0]).type(FloatTensor)
+        
+        if timeStep < env._max_episode_steps: 
+            reward = torch.Tensor([1.0]).type(FloatTensor)
         rewards.append(reward)
-
+        
         value, y, (hx, cx) = model(state_inp, hx, cx)
         prob = F.softmax(y)
         log_prob = F.log_softmax(y, dim=-1)
@@ -147,9 +149,11 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
             object_rel_pos = obsDataNew['observation'][6:9]
             state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
             if timeStep >= env._max_episode_steps: 
+                reward = torch.Tensor([-1.0]).type(FloatTensor)
                 break
-    
-        reward = torch.Tensor([-1.0]).type(FloatTensor)
+        
+        if timeStep < env._max_episode_steps: 
+            reward = torch.Tensor([1.0]).type(FloatTensor)
         rewards.append(reward)
 
         value, y, (hx, cx) = model(state_inp, hx, cx)
@@ -192,7 +196,7 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
             if timeStep >= env._max_episode_steps: break
         
         if info['is_success'] == 1.0:
-            reward = torch.Tensor([10.0]).type(FloatTensor)
+            reward = torch.Tensor([1.0]).type(FloatTensor)
         else:
             reward = torch.Tensor([-1.0]).type(FloatTensor)
         rewards.append(reward)
@@ -374,6 +378,6 @@ def test(rank, args, shared_model, counter):
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
-                        #time.sleep(1)
+                        #time.sleep()
 
                 
