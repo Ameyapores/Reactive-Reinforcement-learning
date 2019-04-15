@@ -90,7 +90,6 @@ class Actor(nn.Module):
 def act(state_inp, model, approach, retract):
     FloatTensor = torch.cuda.FloatTensor
     list1, list2 = model(state_inp, approach, retract)
-    #Az, Ay, Ax, m0, m1, m2, m3, Rz, Ry, Rx, log_stdz, log_stdy, log_stdx, log_std, log_std1, log_std2, log_std3, log_stdRz, log_stdRy, log_stdRx
     num = len(list1)
     act = torch.zeros(num).type(FloatTensor)
     for i in range(len(list1)):

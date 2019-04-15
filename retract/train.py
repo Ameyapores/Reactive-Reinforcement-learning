@@ -34,16 +34,16 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
        
     if args.use_cuda:
         model.cuda()
-    torch.cuda.manual_seed_all(23)
+    torch.cuda.manual_seed_all(12)
     
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
-
+    
     for p in model.fc1.parameters():
         p.requires_grad_(False)
     for p in model.fc2.parameters():
         p.requires_grad_(False)
-
+    
     model.train()
 
     done = True       
@@ -69,7 +69,6 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
             torch.save(shared_model.state_dict(), args.save_path1)
         
         model.load_state_dict(shared_model.state_dict())
-        
         criterion = nn.MSELoss()
         
         while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
@@ -87,41 +86,51 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
 
             objectPos = obsDataNew['observation'][3:6]
             object_rel_pos = obsDataNew['observation'][6:9]
+        state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
 
         while np.linalg.norm(object_rel_pos) >= 0.005 and timeStep <= env._max_episode_steps :
+           
             action = [0, 0, 0, 0, 0, 0]
+            act_tensor, _ = act(state_inp, model, False, False) 
+            
             for i in range(len(object_rel_pos)):
-                action[i] = object_rel_pos[i]*6
-
-            action[3] = -0.01
-            action[5] = obsDataNew['quat'][0]/6
-            obsDataNew, reward, done, info = env.step(action)
-            timeStep += 1
-
-            objectPos = obsDataNew['observation'][3:6]
-            object_rel_pos = obsDataNew['observation'][6:9]
-
-        state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
-        while np.linalg.norm(goal - objectPos) >= 0.01 and timeStep <= env._max_episode_steps :
-        
-            action = [0, 0, 0, 0, 0, 0]
-            act_tensor, _ = act(state_inp, model, False, True) 
-
-            for i in range(len(goal - objectPos)):
                 optimizer.zero_grad()
-                expected = torch.from_numpy(np.array((goal - objectPos)[i]*6)).type(FloatTensor)
+                expected = torch.from_numpy(np.array(object_rel_pos[i]*6)).type(FloatTensor)
                 action[i] = act_tensor[i].cpu().detach().numpy()
                 error = criterion(act_tensor[i], expected)
                 (error).backward(retain_graph=True)
                 ensure_shared_grads(model, shared_model)
-                optimizer.step()  
-            
-            action[3]= -0.01
+                optimizer.step()
+                #action[i] = object_rel_pos[i]*6
+
+            optimizer.zero_grad()
+            action[5] = act_tensor[3].cpu().detach().numpy()
+            error2= criterion(act_tensor[3], torch.from_numpy(np.array(obsDataNew['quat'][0]/6)).type(FloatTensor))
+            (error2).backward(retain_graph=True)
+            ensure_shared_grads(model, shared_model)
+            optimizer.step()
+            action[3]= -0.01 
             obsDataNew, reward, done, info = env.step(action)
             timeStep += 1
-            state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
+
             objectPos = obsDataNew['observation'][3:6]
             object_rel_pos = obsDataNew['observation'][6:9]
+            state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
+            if timeStep >= env._max_episode_steps: break
+
+        while np.linalg.norm(goal - objectPos) >= 0.01 and timeStep <= env._max_episode_steps :
+            
+            action = [0, 0, 0, 0, 0, 0]
+            for i in range(len(goal - objectPos)):
+                action[i] = (goal - objectPos)[i]*6
+
+            action[3] = -0.01
+            obsDataNew, reward, done, info = env.step(action)
+            timeStep += 1
+
+            objectPos = obsDataNew['observation'][3:6]
+            object_rel_pos = obsDataNew['observation'][6:9]
+            if timeStep >= env._max_episode_steps: break
         
         while True: #limit the number of timesteps in the episode to a fixed duration
             
@@ -151,7 +160,6 @@ def test(rank, args, shared_model, counter):
 
     savefile = os.getcwd() + '/train/mario_curves.csv'
     title = ['No. episodes', 'No. of success']
-
     with open(savefile, 'a', newline='') as sfile:
         writer = csv.writer(sfile)
         writer.writerow(title)   
@@ -169,10 +177,9 @@ def test(rank, args, shared_model, counter):
             object_oriented_goal = object_rel_pos.copy()
             object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object    
             timeStep = 0
-            model.load_state_dict(shared_model.state_dict())
-            Ratio, first_step =[], [] 
+            #Ratio, first_step =[], []      
             while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
-                #env.render()
+                ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
                 object_oriented_goal = object_rel_pos.copy()
                 object_oriented_goal[2] += 0.03
@@ -188,39 +195,43 @@ def test(rank, args, shared_model, counter):
                 objectPos = obsDataNew['observation'][3:6]
                 object_rel_pos = obsDataNew['observation'][6:9]
 
+            state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
+            #a=timeStep
             while np.linalg.norm(object_rel_pos) >= 0.005 and timeStep <= env._max_episode_steps :
-                #env.render()
+                ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
-                for i in range(len(object_rel_pos)):
-                    action[i] = object_rel_pos[i]*6
-                action[5] = obsDataNew['quat'][0]/6
-                action[3] = -0.01
-
+                
+                act_tensor, ratio = act(state_inp, model, False, False)    
+                ##Ratio.append(ratio.cpu().detach().numpy())
+                for i in range(len(object_oriented_goal)):
+                    action[i] = act_tensor[i].cpu().detach().numpy()
+                    #action[i] = object_rel_pos[i]*6
+                action[5] = act_tensor[3].cpu().detach().numpy()
+                action[3]= -0.01 
                 obsDataNew, reward, done, info = env.step(action)
                 timeStep += 1
 
                 objectPos = obsDataNew['observation'][3:6]
                 object_rel_pos = obsDataNew['observation'][6:9]
+                state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
+                if timeStep >= env._max_episode_steps: break
             
-            state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)            
             while np.linalg.norm(goal - objectPos) >= 0.01 and timeStep <= env._max_episode_steps :
-            
-                #env.render()
+                ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
-                act_tensor, ratio = act(state_inp, model, False, True)   
-                Ratio.append(ratio.cpu().detach().numpy())
                 for i in range(len(goal - objectPos)):
-                    action[i] = act_tensor[i].cpu().detach().numpy()
-                action[3]= -0.01
+                    action[i] = (goal - objectPos)[i]*6
+
+                action[3] = -0.01
                 obsDataNew, reward, done, info = env.step(action)
                 timeStep += 1
-                state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
+
                 objectPos = obsDataNew['observation'][3:6]
                 object_rel_pos = obsDataNew['observation'][6:9]
                 if timeStep >= env._max_episode_steps: break
-            
+                    
             while True: #limit the number of timesteps in the episode to a fixed duration
-                #env.render()
+                ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
                 action[3] = -0.01 # keep the gripper closed
 
@@ -235,14 +246,14 @@ def test(rank, args, shared_model, counter):
             if info['is_success'] == 1.0:
                 success +=1
             if done:
-                plot_ratio = np.average(np.array(Ratio), 0)
+                #plot_ratio = np.average(np.array(Ratio), 0)
                 #lastObs = env.reset()
                 if ep_num % 100==0:            
                     print("num episodes {}, success {}".format(num_ep, success))
-                    data = [counter.value, success, first_step, plot_ratio[0], plot_ratio[1], plot_ratio[2]]
+                    data = [counter.value, success]
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
-                        time.sleep(32)
+                    time.sleep(25)
 
                 

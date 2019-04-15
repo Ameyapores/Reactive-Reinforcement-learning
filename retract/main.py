@@ -48,13 +48,13 @@ if __name__ == '__main__':
     shared_model = Actor()
     if args.use_cuda:
         shared_model.cuda()
-    torch.cuda.manual_seed_all(23)
+    torch.cuda.manual_seed_all(12)
     shared_model.share_memory()
 
     if os.path.isfile(args.save_path1):
         print('Loading A3C parametets ...')
         shared_model.load_state_dict(torch.load(args.save_path1))
-    
+
     optimizer = SharedAdam(shared_model.parameters(), lr=args.lr)
     optimizer.share_memory()
 
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         p.requires_grad_(False)
     for p in shared_model.fc2.parameters():
         p.requires_grad_(False)
-
+        
     print ("No of available cores : {}".format(mp.cpu_count())) 
 
     processes = []
