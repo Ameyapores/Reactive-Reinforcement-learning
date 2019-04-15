@@ -34,7 +34,7 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
        
     if args.use_cuda:
         model.cuda()
-    torch.cuda.manual_seed_all(23)
+    torch.cuda.manual_seed_all(12)
     
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
@@ -177,7 +177,7 @@ def test(rank, args, shared_model, counter):
             object_oriented_goal = object_rel_pos.copy()
             object_oriented_goal[2] += 0.03 # first make the gripper go slightly above the object    
             timeStep = 0
-            Ratio, first_step =[], []      
+            #Ratio, first_step =[], []      
             while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
                 ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
@@ -196,15 +196,13 @@ def test(rank, args, shared_model, counter):
                 object_rel_pos = obsDataNew['observation'][6:9]
 
             state_inp = torch.from_numpy(env2.observation(obsDataNew)).type(FloatTensor)
-            a=timeStep
+            #a=timeStep
             while np.linalg.norm(object_rel_pos) >= 0.005 and timeStep <= env._max_episode_steps :
                 ##env.render()
                 action = [0, 0, 0, 0, 0, 0]
                 
                 act_tensor, ratio = act(state_inp, model, False, False)    
-                if timeStep ==a+1:
-                    first_step.append(ratio.cpu().detach().numpy()[0])
-                Ratio.append(ratio.cpu().detach().numpy())
+                ##Ratio.append(ratio.cpu().detach().numpy())
                 for i in range(len(object_oriented_goal)):
                     action[i] = act_tensor[i].cpu().detach().numpy()
                     #action[i] = object_rel_pos[i]*6
@@ -248,14 +246,14 @@ def test(rank, args, shared_model, counter):
             if info['is_success'] == 1.0:
                 success +=1
             if done:
-                plot_ratio = np.average(np.array(Ratio), 0)
+                #plot_ratio = np.average(np.array(Ratio), 0)
                 #lastObs = env.reset()
                 if ep_num % 100==0:            
                     print("num episodes {}, success {}".format(num_ep, success))
-                    data = [counter.value, success, first_step, plot_ratio[0], plot_ratio[1], plot_ratio[2]]
+                    data = [counter.value, success]
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
-                    time.sleep(31)
+                    time.sleep(25)
 
                 

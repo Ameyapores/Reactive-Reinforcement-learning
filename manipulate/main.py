@@ -48,7 +48,7 @@ if __name__ == '__main__':
     shared_model = Actor()
     if args.use_cuda:
         shared_model.cuda()
-    torch.cuda.manual_seed_all(23)
+    torch.cuda.manual_seed_all(12)
     shared_model.share_memory()
 
     if os.path.isfile(args.save_path1):
