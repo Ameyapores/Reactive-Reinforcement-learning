@@ -40,7 +40,7 @@ model = Actor()
 if args.use_cuda:
     model.cuda()
 
-#torch.cuda.manual_seed_all(25)
+torch.cuda.manual_seed_all(25)
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
 if os.path.isfile(args.save_path1):
@@ -61,7 +61,7 @@ max_steps = 50
 ep_numb = 0
 done = True
 success = 0         
-
+  
 while ep_numb < max_eps:
     ep_numb +=1
     lastObs = env.reset()
