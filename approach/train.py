@@ -34,7 +34,7 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
        
     if args.use_cuda:
         model.cuda()
-    torch.cuda.manual_seed_all(23)
+    torch.cuda.manual_seed_all(12)
     
     if optimizer is None:
         optimizer = optim.Adam(shared_model.parameters(), lr=args.lr)
@@ -70,16 +70,18 @@ def train(rank, args, shared_model, counter, lock, optimizer=None):
         while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
             
             action = [0, 0, 0, 0, 0, 0]
-            
-            act_tensor, _ = act(state_inp, model, True, False)                   
+            error = torch.zeros(3).type(FloatTensor) 
+            act_tensor, _ = act(state_inp, model, True, False)
+            optimizer.zero_grad()                   
             for i in range(len(object_oriented_goal)):
-                optimizer.zero_grad()
                 action[i] = act_tensor[i].cpu().detach().numpy()
                 expected = torch.from_numpy(np.array(object_oriented_goal[i]*6)).type(FloatTensor)                  
-                error = criterion(act_tensor[i], expected)
-                (error).backward(retain_graph=True)
-                ensure_shared_grads(model, shared_model)
-                optimizer.step() 
+                error[i] = criterion(act_tensor[i], expected)
+
+            loss = torch.sum(error)
+            loss.backward(retain_graph=True)
+            ensure_shared_grads(model, shared_model)
+            optimizer.step()   
 
             object_oriented_goal = object_rel_pos.copy()            
             object_oriented_goal[2] += 0.03
@@ -245,6 +247,6 @@ def test(rank, args, shared_model, counter):
                     with open(savefile, 'a', newline='') as sfile:
                         writer = csv.writer(sfile)
                         writer.writerows([data])
-                        time.sleep(30)
+                        time.sleep(20)
 
                 
