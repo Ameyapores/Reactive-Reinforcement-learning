@@ -13,7 +13,7 @@ import random
 import torch.nn as nn
 
 
-SAVEPATH1 = os.getcwd() + '/actor_params.pth'
+SAVEPATH1 = os.getcwd() + '/train/actor_params.pth'
 
 env = gym.make("FetchPickAndPlace-v1")
 env2 = gym.wrappers.FlattenDictWrapper(env, dict_keys=['observation', 'desired_goal'])
@@ -73,8 +73,8 @@ while ep_numb < max_eps:
     timeStep = 0 #count the total number of timesteps
     state_inp = torch.from_numpy(env2.observation(lastObs)).type(FloatTensor)
     Ratio=[]
-    while np.linalg.norm(object_oriented_goal) >= 0.01 and timeStep <= env._max_episode_steps:
-        #env.render()
+    while np.linalg.norm(object_oriented_goal) >= 0.015 and timeStep <= env._max_episode_steps:
+        env.render()
         action = [0, 0, 0, 0, 0, 0]
         act_tensor, ratio = act(state_inp, model, True, False)       
         #print(act_tensor)     
@@ -95,7 +95,7 @@ while ep_numb < max_eps:
         if timeStep >= env._max_episode_steps: break
     
     while np.linalg.norm(object_rel_pos) >= 0.005 and timeStep <= env._max_episode_steps :
-        #env.render()
+        env.render()
         action = [0, 0, 0, 0, 0, 0]
         act_tensor, ratio = act(state_inp, model, False, False)    
         Ratio.append(ratio.cpu().detach().numpy())
@@ -114,7 +114,7 @@ while ep_numb < max_eps:
 
     while np.linalg.norm(goal - objectPos) >= 0.01 and timeStep <= env._max_episode_steps :
             
-        #env.render()
+        env.render()
         action = [0, 0, 0, 0, 0, 0]
         act_tensor, ratio = act(state_inp, model, False, True)    
         Ratio.append(ratio.cpu().detach().numpy())
@@ -131,7 +131,7 @@ while ep_numb < max_eps:
         if timeStep >= env._max_episode_steps: break
     
     while True: #limit the number of timesteps in the episode to a fixed duration
-        #env.render()
+        env.render()
         action = [0, 0, 0, 0, 0, 0]
         action[3] = -0.01 # keep the gripper closed
 
